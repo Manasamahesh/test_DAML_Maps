@@ -1,0 +1,4 @@
+/.daml
+*.log
+damlc.hp
+.DS_Store

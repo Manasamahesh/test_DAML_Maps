@@ -6,7 +6,7 @@ import Main.BusinessObjects.Commodities
 --- Functional Imports
 import Main.DataTypes.Utils
 import DA.Optional
-import DA.Map as M
+import DA.Next.Map as M
 import DA.List as L
 
 type EntityKey = (Text, Party, Party)
@@ -28,7 +28,7 @@ template Entity
 		key (role, manager, entity) : EntityKey
 		maintainer key._2
 
-		nonconsuming choice CreateCommodity: Either (Text)(ContractId Commodities)
+		nonconsuming choice CreateCommodity: Either  Text (ContractId Commodities)
 			with
 				_commodity: Text
 				_details: Text
@@ -37,37 +37,33 @@ template Entity
 				_owner: Party
 
 			controller _owner 
-				do 
+				do 	
 					debug "Creating Commodity."
 					existingCommodityCid <- lookupByKey @Commodities (_commodity, _owner)
-					let existingCCid = fromSome (existingCommodityCid)
 					if(isSome existingCommodityCid)
 					then do
-						return ( Left ("Commodity already exists."))
+						return (Left "Commodity already exists.")
 					else
 						do
+							debug "Creating Commodity."
+							let roleData = fromSome (M.lookup role roleDetails)
+							debug (roleData)
 							debug "Creating Commodity."
 							let roleData = (M.lookup this.role this.roleDetails)
 							-- when u r trying to access map values datatype we need to convert from optional to normal value by using fromSome,it is applicable how deep the map goes
 							-- meaning if canbuy itself Map once again u need to convert using fromsome then try accessing values
-							let canBuy = (fromSome(roleData)).canBuy
-							if(isSome roleData)
-							then do 
-								-- return ("You don't have appropriate role.")
-								return (Right existingCCid)
+							let canRequestNewLot = (fromSome(roleData)).canRequestNewLot
+
+							if (canRequestNewLot)
+							then do
+									entityId <- create Commodities with commodity = _commodity,
+																			details = _details,
+																			quantity = _quantity,
+																			cost = _cost,
+																			owner = _owner
+									return (Right entityId)
 							else
 								do
-									if (canBuy)
-									then do
-										entityId <- create Commodities with commodity = _commodity,
-																				details = _details,
-																				quantity = _quantity,
-																				cost = _cost,
-																				owner = _owner
-										-- return ("Commodity created successfully.")
-										return (Right entityId)
-									else
-										do
-											return (Left "You are not entitled to create commodity.")
+									return (Left "You are not entitled to create commodity.")
 				  
 
